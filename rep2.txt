@@ -1,0 +1,117 @@
+public class VisitorH
+    {
+        int nameHash;
+        int surnameHash;
+        List<string> visitedEnclosures;
+
+        Hashtable hashmap = new Hashtable();
+        
+        public VisitorH(string name, string surname, List<string> enclosures)
+        {
+            nameHash = name.GetHashCode();
+            surnameHash = surname.GetHashCode();
+            hashmap.Add(nameHash, name);
+            hashmap.Add(surnameHash, surname);
+            visitedEnclosures = enclosures;
+        }
+        public override string ToString()
+        {
+            string stringForm = $"{hashmap[nameHash]} {hashmap[surnameHash]}@";
+            return stringForm + String.Join(",", visitedEnclosures);
+        }
+    }
+    public class EnclosureH
+    {
+        int nameHash;
+        List<string> animals;
+        string employee;
+
+        Hashtable hashmap = new Hashtable();
+
+        public EnclosureH(string name, List<string> animals, string employee)
+        {
+            nameHash = name.GetHashCode();
+            hashmap.Add(nameHash, name);
+            this.animals = animals;
+            this.employee = employee;
+        }
+        public override string ToString()
+        {
+            (string employeeName, string employeeSurname) = employee.Split('(')[0].Split(' ');
+            string stringForm = $"{hashmap[nameHash]}@{employeeName} {employeeSurname}@";
+            if (animals.Count > 0)
+                stringForm += ','; 
+            return stringForm + String.Join(",", animals);
+        }
+    }
+    public  class EmployeeH
+    {
+        int nameHash;
+        int surnameHash;
+        int ageHash;
+        List<string> enclosures;
+
+        Hashtable hashmap = new Hashtable();
+
+        public EmployeeH(string name, string surname, int age, List<string> enclosures)
+        {
+            nameHash = name.GetHashCode();
+            surnameHash = surname.GetHashCode();
+            ageHash = age.ToString().GetHashCode();
+            hashmap.Add(nameHash, name);
+            hashmap.Add(surnameHash, surname);
+            hashmap.Add(ageHash, age);
+            this.enclosures = enclosures;
+        }
+        public override string ToString()
+        {
+            string stringForm = $"{hashmap[nameHash]} {hashmap[surnameHash]}({hashmap[ageHash]})@";
+            return stringForm + String.Join(",", enclosures);
+        }
+    }
+    public class AnimalH
+    {
+        int nameHash;
+        int ageHash;
+        string species;
+
+        Hashtable hashmap = new Hashtable();
+
+        public AnimalH(string name, int age, string species)
+        {
+            nameHash = name.GetHashCode();
+            ageHash = age.ToString().GetHashCode();
+            hashmap.Add(nameHash, name);
+            hashmap.Add(ageHash, age);
+            this.species = species;
+        }
+        public override string ToString()
+        {
+            string speciesName = species.Split("$")[0];
+            return $"{hashmap[nameHash]}({hashmap[ageHash]})%{speciesName}";
+        }
+    }
+    public class SpeciesH
+    {
+        int nameHash;
+        List<string>? favoriteFoods;
+
+        Hashtable hashmap = new Hashtable();
+
+        public SpeciesH(string name, List<string>? favoriteFoods)
+        {
+            nameHash = name.GetHashCode();
+            hashmap.Add(nameHash, name);
+            this.favoriteFoods = favoriteFoods;
+        }
+        public override string ToString()
+        {
+            string stringForm = $"{hashmap[nameHash]}$";
+            foreach(string s in favoriteFoods)
+            {
+                stringForm += s.Split('$')[0] + ',';
+            }
+            stringForm.Remove(-1);
+            return stringForm;
+        }
+    }
