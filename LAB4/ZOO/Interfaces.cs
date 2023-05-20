@@ -1,12 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.Serialization;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace LAB
 {
-    public interface IObject
+    public interface IObject 
     {
         public Dictionary<string, Func<object>> getFields { get; }
         public Dictionary<string, Action<object>> setFields { get; set; }

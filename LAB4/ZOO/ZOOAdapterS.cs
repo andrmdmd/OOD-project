@@ -4,6 +4,7 @@ using System.Collections;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Azure;
 
 namespace LAB
 {
@@ -15,6 +16,23 @@ namespace LAB
         public List<IAnimal> animals = new();
         public List<ISpecies> species = new();
         
+        public static void setElementByName(Stack<string> s, string name, string value)
+        {
+            List<string> list = s.ToList();
+            var index = list.IndexOf(name);
+            list[index + 2] = value;
+            s.Clear();
+            foreach(var item in list)
+                s.Push(item);
+        }
+
+        public static string getElementByName(Stack<string> s, string name)
+        {
+            while (s.Pop() != name)
+                ;
+            s.Pop();
+            return s.Pop();
+        }
 
         public ZOOAdapterS(List<IVisitor> visitors, List<IEnclosure> enclosures, List<IEmployee> employees, List<IAnimal> animals, List<ISpecies> species)
         {
@@ -41,6 +59,12 @@ namespace LAB
                 ["surname"] = () => surname,
                 ["visited_enclosures"] = () => visitedEnclosures
             };
+            setFields = new Dictionary<string, Action<object>>
+            {
+                ["name"] = value => name = (string)value,
+                ["surname"] = value => surname = (string)value,
+                ["visited_enclosures"] = value => throw new NotImplementedException()
+            };
 
         }
         public string name
@@ -48,22 +72,29 @@ namespace LAB
             get
             {
                 Stack<string> s = new(new Stack<string>(visitor.visitorTuple.Item2));
-                while (s.Pop() != "name")
-                    ;
-                s.Pop();
-                return s.Pop();
+                return ZOOAdapterS.getElementByName(s, "name");
             }
+            set
+            {
+                Stack<string> s = visitor.visitorTuple.Item2;
+                ZOOAdapterS.setElementByName(s, "name", value);
+
+            }
+
         }
         public string surname
         {
             get
             {
                 Stack<string> s = new(new Stack<string>(visitor.visitorTuple.Item2));
-                while (s.Pop() != "surname")
-                    ;
-                s.Pop();
-                return s.Pop();
+                return ZOOAdapterS.getElementByName(s, "surname");
             }
+            set
+            {
+                Stack<string> s = visitor.visitorTuple.Item2;
+                ZOOAdapterS.setElementByName(s, "surname", value);
+            }
+
         }
         public List<IEnclosure> visitedEnclosures
         {
@@ -100,6 +131,12 @@ namespace LAB
                 ["animals"] = () => animals,
                 ["employee"] = () => employee
             };
+            setFields = new Dictionary<string, Action<object>>
+            {
+                ["name"] = value => name = (string)value,
+                ["animals"] = value => throw new NotImplementedException(),
+                ["employee"] = value => throw new NotImplementedException()
+            };
         }
 
         public string name
@@ -107,10 +144,12 @@ namespace LAB
             get
             {
                 Stack<string> s = new(new Stack<string>(enclosure.enclosureTuple.Item2));
-                while (s.Pop() != "name")
-                    ;
-                s.Pop();
-                return s.Pop();
+                return ZOOAdapterS.getElementByName(s, "name");
+            }
+            set
+            {
+                Stack<string> s = enclosure.enclosureTuple.Item2;
+                ZOOAdapterS.setElementByName(s, "name", value);
             }
         }
         public List<IAnimal> animals
@@ -129,6 +168,7 @@ namespace LAB
                 }
                 return animals;
             }
+
         }
         public IEmployee employee
         {
@@ -160,16 +200,24 @@ namespace LAB
                 ["enclosures"] = () => enclosures,
                 ["age"] = () => age
             };
+            setFields = new Dictionary<string, Action<object>>
+            {
+                ["name"] = value => name = (string)value,
+                ["surname"] = value => surname = (string)value,
+                ["age"] = value => age = int.Parse((string)value)
+            };
         }
         public string name
         {
             get
             {
                 Stack<string> s = new(new Stack<string>(employee.employeeTuple.Item2));
-                while (s.Pop() != "name")
-                    ;
-                s.Pop();
-                return s.Pop();
+                return ZOOAdapterS.getElementByName(s, "name");
+            }
+            set
+            {
+                Stack<string> s = employee.employeeTuple.Item2;
+                ZOOAdapterS.setElementByName(s, "name", value);
             }
         }
         public string surname
@@ -177,10 +225,12 @@ namespace LAB
             get
             {
                 Stack<string> s = new(new Stack<string>(employee.employeeTuple.Item2));
-                while (s.Pop() != "surname")
-                    ;
-                s.Pop();
-                return s.Pop();
+                return ZOOAdapterS.getElementByName(s, "surname");
+            }
+            set
+            {
+                Stack<string> s = employee.employeeTuple.Item2;
+                ZOOAdapterS.setElementByName(s, "surname", value);
             }
         }
         public int age
@@ -188,10 +238,12 @@ namespace LAB
             get
             {
                 Stack<string> s = new(new Stack<string>(employee.employeeTuple.Item2));
-                while (s.Pop() != "age")
-                    ;
-                s.Pop();
-                return int.Parse(s.Pop());
+                return int.Parse(ZOOAdapterS.getElementByName(s, "age"));
+            }
+            set
+            {
+                Stack<string> s = employee.employeeTuple.Item2;
+                ZOOAdapterS.setElementByName(s, "age", value.ToString());
             }
         }
         public List<IEnclosure> enclosures
@@ -230,16 +282,24 @@ namespace LAB
                 ["age"] = () => age,
                 ["species"] = () => species
             };
+            setFields = new Dictionary<string, Action<object>>
+            {
+                ["name"] = value => name = (string)value,
+                ["age"] = value => age = int.Parse((string)value),
+                ["species"] = value => throw new NotImplementedException()
+            };
         }
         public string name
         {
             get
             {
                 Stack<string> s = new(new Stack<string>(animal.animalTuple.Item2));
-                while (s.Pop() != "name")
-                    ;
-                s.Pop();
-                return s.Pop();
+                return ZOOAdapterS.getElementByName(s, "name");
+            }
+            set
+            {
+                Stack<string> s = animal.animalTuple.Item2;
+                ZOOAdapterS.setElementByName(s, "name", value);
             }
         }
         public int age
@@ -247,11 +307,14 @@ namespace LAB
             get
             {
                 Stack<string> s = new(new Stack<string>(animal.animalTuple.Item2));
-                while (s.Pop() != "age")
-                    ;
-                s.Pop();
-                return int.Parse(s.Pop());
+                return int.Parse(ZOOAdapterS.getElementByName(s, "age"));
             }
+            set
+            {
+                Stack<string> s = animal.animalTuple.Item2;
+                ZOOAdapterS.setElementByName(s, "age", value.ToString());
+            }
+        
         }
         public ISpecies species
         {
@@ -282,17 +345,25 @@ namespace LAB
                 ["name"] = () => name,
                 ["favorite_foods"] = () => favoriteFoods
             };
+            setFields = new Dictionary<string, Action<object>>
+            {
+                ["name"] = value => name = (string)value,
+                ["favorite_foods"] = value => throw new NotImplementedException()
+            };
         }
+
 
         public string name
         {
             get
             {
                 Stack<string> s = new(new Stack<string>(species.speciesTuple.Item2));
-                while (s.Pop() != "name")
-                    ;
-                s.Pop();
-                return s.Pop();
+                return ZOOAdapterS.getElementByName(s, "name");
+            }
+            set
+            {
+                Stack<string> s = species.speciesTuple.Item2;
+                ZOOAdapterS.setElementByName(s, "name", value);
             }
         }
         public List<ISpecies>? favoriteFoods

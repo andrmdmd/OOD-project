@@ -11,7 +11,8 @@ namespace LAB
         string Name { get; }
         string Description { get; }
 
-        string Usage { get; }   
+        string Usage { get; }
+        string[] Prepare(string[] args);
         void Execute(string[] args);
     }
 }
