@@ -59,7 +59,23 @@ namespace LAB4
                 }
 
                 ICommand command = commands[commandName];
-                command.Execute(args);
+                try
+                {
+                    command.Execute(args);
+
+                }
+                catch (InvalidArgumentsException ex)
+                {
+                    Console.ForegroundColor = ConsoleColor.DarkYellow;
+                    Console.WriteLine(ex.ToString());
+                    Console.ResetColor();
+                }
+                catch (Exception ex)
+                {
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine(ex.ToString());
+                    Console.ResetColor();
+                }
 
                 if (command is ExitCommand)
                 {
