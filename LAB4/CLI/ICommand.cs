@@ -14,4 +14,10 @@ namespace LAB
         string Usage { get; }   
         void Execute(string[] args);
     }
+
+    public interface IUndoable
+    {
+        void Undo();
+        void Redo();
+    }
 }

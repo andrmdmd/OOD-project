@@ -133,13 +133,35 @@ namespace LAB
 
     }
 
-    public class AddCommand : ICommand
+    public class AddCommand : ICommand, IUndoable
     {
         public string Name => "add";
 
         public string Description => "add a new object of a particular type and in one of two representations";
 
         public string Usage => "Usage: add <class_name> base|secondary";
+
+        public static Stack<(string, IObject)> UndoStack = new();
+        public static Stack<(string, IObject)> RedoStack = new();
+
+        public void Undo()
+        {
+            if (UndoStack.Count == 0) return;
+
+            (string classname, IObject obj) = UndoStack.Pop();
+            ZOO.objList[classname].Remove(obj);
+            RedoStack.Push((classname, obj));
+
+        }
+
+        public void Redo()
+        {
+            if(RedoStack.Count == 0) return;
+
+            (string classname, IObject obj) = RedoStack.Pop();
+            ZOO.objList[classname].Add(obj);
+            UndoStack.Push((classname, obj));
+        }
 
         public void Execute(string[] args)
         {
@@ -201,6 +223,7 @@ namespace LAB
                     if(representation == "base")
                     {
                         ZOO.objList[className].Add(obj);
+                        UndoStack.Push((className, obj));
                     }
                     else
                     {
@@ -209,12 +232,19 @@ namespace LAB
                             values.Add(obj.getFields[prop.Key]());
                         IObject objAdapter = ZOO.adapterConstructors[className](values.ToArray());
                         ZOO.objList[className].Add(objAdapter);
+                        UndoStack.Push((className, objAdapter));
 
                     }
                     Console.ForegroundColor = ConsoleColor.Yellow;
                     Console.Write($"\nObject created: "); 
                     Console.ResetColor();
                     Console.WriteLine($"{className} {obj.ToString()}");
+
+                    if(RedoStack.Count > 0)
+                    {
+                        RedoStack.Clear();
+                    }
+                    
                     break;
                 }
                 else if (input == "EXIT")
@@ -257,13 +287,36 @@ namespace LAB
         }
     }
 
-    public class EditCommand : ICommand
+    public class EditCommand : ICommand, IUndoable
     {
         public string Name => "edit";
 
         public string Description => "edit objects of a particular type matching certain conditions";
         public string Usage => "Usage: edit <class_name> [<requirement> ...]";
 
+        public static Stack<(string, IObject, IObject)> UndoStack = new();
+        public static Stack<(string, IObject, IObject)> RedoStack = new();
+
+        public void Undo()
+        {
+            if (UndoStack.Count == 0) return;
+
+            (string classname, IObject originalObj, IObject editedObj) = UndoStack.Pop();
+            ZOO.objList[classname].Remove(editedObj);
+            ZOO.objList[classname].Add(originalObj);
+            RedoStack.Push((classname, originalObj, editedObj));
+
+        }
+
+        public void Redo()
+        {
+            if (RedoStack.Count == 0) return;
+
+            (string classname, IObject originalObj, IObject editedObj) = UndoStack.Pop();
+            ZOO.objList[classname].Remove(originalObj);
+            ZOO.objList[classname].Add(editedObj);
+            RedoStack.Push((classname, originalObj, editedObj));
+        }
         public void Execute(string[] args)
         {
             if (args.Length < 2)
@@ -359,6 +412,11 @@ namespace LAB
 
                     ZOO.objList[className][ZOO.objList[className].IndexOf(originalObj)] = editingObj;
 
+                    UndoStack.Push((className, originalObj, editingObj));
+                    if(RedoStack.Count > 0)
+                    {
+                        RedoStack.Clear();
+                    }
 
                     Console.ForegroundColor = ConsoleColor.Yellow;
                     Console.Write($"\nObject edited: ");
