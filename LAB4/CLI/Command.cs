@@ -461,6 +461,83 @@ namespace LAB
             }
 
         }
+
+        public class DeleteCommand : ICommand, IUndoable
+        {
+            public string Name => "delete";
+            public string Description => "delete objects of a particular type matching certain conditions";
+            public string Usage => "Usage: delete <class_name> [<requirement> ...]";
+
+            public static Stack<(string, IObject)> UndoStack = new();
+            public static Stack<(string, IObject)> RedoStack = new();
+
+            public void Undo()
+            {
+                if (UndoStack.Count == 0) return;
+
+                (string classname, IObject obj) = UndoStack.Pop();
+                ZOO.objList[classname].Add(obj);
+                RedoStack.Push((classname, obj));
+
+            }
+
+            public void Redo()
+            {
+                if (RedoStack.Count == 0) return;
+
+                (string classname, IObject obj) = RedoStack.Pop();
+                ZOO.objList[classname].Remove(obj);
+                UndoStack.Push((classname, obj));
+            }
+
+            public void Execute(string[] args)
+            {
+                if (args.Length < 2)
+                {
+                    throw new InvalidArgumentsException(Usage);
+                }
+
+                string className = args[1].ToLower();
+
+                if (ZOO.objList.ContainsKey(className) == false)
+                {
+                    throw new InvalidClassnameException(className);
+                }
+
+
+                var requirements = args.Skip(2).ToArray();
+
+
+                var list = ZOO.objList[className];
+
+
+                if (list.Count == 0)
+                {
+                    throw new NoObjectsFoundException(className);
+                }
+
+                List<IObject> matches = new();
+
+                foreach (var item in list)
+                {
+                    var _obj = (IObject)item;
+                    if (CommandFuncs.CheckRequirements(_obj, requirements))
+                        matches.Add(_obj);
+                }
+                if (matches.Count != 1)
+                {
+                    throw new NotUniqueMatchException(className, matches.Select(x => x.name).ToList());
+                }
+
+                IObject obj = matches[0];
+
+
+                ZOO.objList[className].Remove(obj);
+
+                UndoStack.Push((className, obj));
+                if (RedoStack.Count > 0) RedoStack.Clear();
+            }
+        }
     }
 
     public static class CommandFuncs
