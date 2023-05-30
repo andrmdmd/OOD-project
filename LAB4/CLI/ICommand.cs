@@ -15,7 +15,7 @@ namespace LAB
         void Execute(string[] args);
     }
 
-    public interface IUndoable
+    public interface IUndoable : ICommand
     {
         void Undo();
         void Redo();

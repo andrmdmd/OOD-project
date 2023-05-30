@@ -88,7 +88,7 @@ namespace LAB
         }
     }
 
-    public class AddCommand : ICommand, IUndoable
+    public class AddCommand : IUndoable
     {
         public string Name => "add";
 
@@ -245,7 +245,7 @@ namespace LAB
         }
     }
 
-    public class EditCommand : ICommand, IUndoable
+    public class EditCommand : IUndoable
     {
         public string Name => "edit";
 
@@ -254,6 +254,7 @@ namespace LAB
 
         Stack<(string, IObject, IObject)> UndoStack = new();
         Stack<(string, IObject, IObject)> RedoStack = new();
+
 
         public void Undo()
         {
@@ -270,10 +271,10 @@ namespace LAB
         {
             if (RedoStack.Count == 0) return;
 
-            (string classname, IObject originalObj, IObject editedObj) = UndoStack.Pop();
+            (string classname, IObject originalObj, IObject editedObj) = RedoStack.Pop();
             ZOO.objList[classname].Remove(originalObj);
             ZOO.objList[classname].Add(editedObj);
-            RedoStack.Push((classname, originalObj, editedObj));
+            UndoStack.Push((classname, originalObj, editedObj));
         }
         public void Execute(string[] args)
         {
@@ -302,9 +303,8 @@ namespace LAB
 
             foreach (var item in list)
             {
-                var _obj = (IObject)item;
-                if (CommandFuncs.CheckRequirements(_obj, requirements))
-                    matches.Add(_obj);
+                if (CommandFuncs.CheckRequirements(item, requirements))
+                    matches.Add(item);
             }
             if (matches.Count != 1)
             {
@@ -406,7 +406,7 @@ namespace LAB
             UndoStack.Push((className, obj, editingObj));
         }
 
-        public class DeleteCommand : ICommand, IUndoable
+        public class DeleteCommand : IUndoable
         {
             public string Name => "delete";
             public string Description => "delete objects of a particular type matching certain conditions";
@@ -464,9 +464,8 @@ namespace LAB
 
                 foreach (var item in list)
                 {
-                    var _obj = (IObject)item;
-                    if (CommandFuncs.CheckRequirements(_obj, requirements))
-                        matches.Add(_obj);
+                    if (CommandFuncs.CheckRequirements(item, requirements))
+                        matches.Add(item);
                 }
                 if (matches.Count != 1)
                 {
@@ -490,9 +489,9 @@ namespace LAB
         public string Description => "undo last used command";
         public string Usage => "Usage: undo";
 
-        Stack<ICommand> UndoStack;
-        Stack<ICommand> RedoStack;
-        public UndoCommand(Stack<ICommand> undoStack, Stack<ICommand> redoStack)
+        Stack<IUndoable> UndoStack;
+        Stack<IUndoable> RedoStack;
+        public UndoCommand(Stack<IUndoable> undoStack, Stack<IUndoable> redoStack)
         {
             UndoStack = undoStack;
             RedoStack = redoStack;
@@ -506,20 +505,12 @@ namespace LAB
             if (UndoStack.Count == 0)
                 return;
 
-            ICommand command;
-            do
-            {
-                command = UndoStack.Pop();
-            } 
-            while (command is not IUndoable && UndoStack.Count > 0);
-
-            if(command is IUndoable)
-            {
-                IUndoable undoable = (IUndoable)command;
-                undoable.Undo();
-                Console.WriteLine($"undo: {command.Name}");
-            }
+            IUndoable command = UndoStack.Pop();
+            command.Undo();
+            RedoStack.Push(command);
             
+            Console.WriteLine($"undo: {command.Name}");
+
         }
     }
 
@@ -529,9 +520,9 @@ namespace LAB
         public string Description => "redo last used command";
         public string Usage => "Usage: redo";
 
-        Stack<ICommand> UndoStack;
-        Stack<ICommand> RedoStack;
-        public RedoCommand(Stack<ICommand> undoStack, Stack<ICommand> redoStack)
+        Stack<IUndoable> UndoStack;
+        Stack<IUndoable> RedoStack;
+        public RedoCommand(Stack<IUndoable> undoStack, Stack<IUndoable> redoStack)
         {
             UndoStack = undoStack;
             RedoStack = redoStack;
@@ -545,20 +536,11 @@ namespace LAB
             if (RedoStack.Count == 0)
                 return;
 
-            ICommand command;
-            do
-            {
-                command = RedoStack.Pop();
-            }
-            while (command is not IUndoable && RedoStack.Count > 0);
+            IUndoable command = RedoStack.Pop();
+            command.Redo();
+            UndoStack.Push(command);
 
-            if (command is IUndoable)
-            {
-                IUndoable undoable = (IUndoable)command;
-                undoable.Redo();
-                Console.WriteLine($"redo: {command.Name}");
-            }
-
+            Console.WriteLine($"redo: {command.Name}");
 
         }
     }

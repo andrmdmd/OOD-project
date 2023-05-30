@@ -10,8 +10,8 @@ namespace LAB4
     public class MConsole
     {
         public static Dictionary<string, ICommand> commands = new();
-        Stack<ICommand> UndoStack = new();
-        Stack<ICommand> RedoStack = new();
+        Stack<IUndoable> UndoStack = new();
+        Stack<IUndoable> RedoStack = new();
 
         public MConsole()
         {
@@ -66,12 +66,14 @@ namespace LAB4
                 try
                 {
                     command.Execute(args);
-                    UndoStack.Push(command);
-                    if(RedoStack.Count > 0)
+                    if(command is IUndoable)
                     {
-                        RedoStack.Clear();
+                        UndoStack.Push((IUndoable)command);
+                        if (RedoStack.Count > 0)
+                        {
+                            RedoStack.Clear();
+                        }
                     }
-
                 }
                 catch (InvalidArgumentsException ex)
                 {
