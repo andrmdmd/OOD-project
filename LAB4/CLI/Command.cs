@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -12,51 +13,20 @@ namespace LAB
 
         public string Description { get; } = "print all objects of a particular type";
 
-        public string Usage => "Usage: list [--<option>] <class name>";
+        public string Usage => "Usage: list <class name>";
 
         public void Execute(string[] args)
         {
-            if (args.Length < 2 || args.Length > 3)
-            {
-                Console.ForegroundColor = ConsoleColor.DarkYellow;
-                Console.WriteLine(Usage);
-                Console.ResetColor();
-                return;
-            }
-            string opt = args.Length == 3 ? args[1] : "";
-            string className = args.Length == 2 ? args[1] : args[2];
-            if (className == "--all")
-            {
-                Console.ForegroundColor = ConsoleColor.Yellow;
-                Console.WriteLine("Valid invocations of 'list':");
-                Console.ResetColor();
-                foreach (var e in ZOO.objList)
-                {
-                    Console.WriteLine("list " + e.Key);
-                }
-                return;
-            }
+            if (args.Length != 2)
+                throw new InvalidArgumentsException(Usage);
+
+            string className = args[1];
+
             if (ZOO.objList.ContainsKey(className) == false)
-            {
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"Invalid input. To see things you can list write 'list --all'");
-                Console.ResetColor();
-                return;
-            }
-            if (opt == "--verbose")
-            {
-                foreach (var value in ZOO.objList[className])
-                {
-                    Console.WriteLine(value.ToString());
-                }
-            }
-            else
-            {
-                foreach (var value in ZOO.objList[className])
-                {
-                    Console.WriteLine(value.name);
-                }
-            }
+                throw new InvalidClassnameException(className);
+
+            foreach (var value in ZOO.objList[className])
+                Console.WriteLine(value.name);
         }
     }
     public class ExitCommand : ICommand
@@ -75,62 +45,47 @@ namespace LAB
     public class FindCommand : ICommand
     {
         public string Name => "find";
-
         public string Description => "find objects of a particular type matching certain conditions";
         public string Usage => "Usage: find <class_name> [<requirement> ...]";
-
         public void Execute(string[] args)
         {
             if (args.Length < 2)
-            {
-                Console.ForegroundColor = ConsoleColor.DarkYellow;
-                Console.WriteLine(Usage);
-                Console.ResetColor();
-                return;
-            }
+                throw new InvalidArgumentsException(Usage);
 
             string className = args[1].ToLower();
 
             if (ZOO.objList.ContainsKey(className) == false)
-            {
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"Invalid class name: {className}");
-                Console.ResetColor();
-                return;
-            }
+                throw new InvalidClassnameException(className);
+
+            var requirements = args.Skip(2).ToArray();
 
             var list = ZOO.objList[className];
 
             if (list.Count == 0)
-            {
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"No objects of type {className} found");
-                Console.ResetColor();
-                return;
-            }
+                throw new NoObjectsFoundException(className);
 
-            if (args.Length == 2)
+            List<IObject> result = new List<IObject>();
+
+            if (args.Length == 1)
             {
                 foreach (var item in list)
                 {
-                    Console.WriteLine(item);
+                    result.Add(item);
+                }
+            }
+            else
+            {
+                foreach (var item in list)
+                {
+                    var obj = (IObject)item;
+                    if (CommandFuncs.CheckRequirements(obj, requirements))
+                        result.Add(obj);
                 }
             }
 
-            var requirements = args.Skip(2).ToArray();
-
-            foreach (var item in list)
-            {
-                var obj = (IObject)item;
-                if (CommandFuncs.CheckRequirements(obj, requirements))
-                    Console.WriteLine(obj);
-
-
-            }
-
+            foreach (var item in result)
+                Console.WriteLine(item.ToString());
         }
-
-
     }
 
     public class AddCommand : ICommand, IUndoable
@@ -141,8 +96,8 @@ namespace LAB
 
         public string Usage => "Usage: add <class_name> base|secondary";
 
-        public static Stack<(string, IObject)> UndoStack = new();
-        public static Stack<(string, IObject)> RedoStack = new();
+        Stack<(string, IObject)> UndoStack = new();
+        Stack<(string, IObject)> RedoStack = new();
 
         public void Undo()
         {
@@ -165,39 +120,32 @@ namespace LAB
 
         public void Execute(string[] args)
         {
-            if(args.Length < 3)
-            {
-                Console.ForegroundColor = ConsoleColor.DarkYellow;
-                Console.WriteLine(Usage);
-                Console.ResetColor();
-                return;
-            }
+            if (args.Length != 3)
+                throw new InvalidArgumentsException(Usage);
+
             string className = args[1];
+
             if (!ZOO.objList.ContainsKey(className))
-            {
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"Invalid class name: {className}");
-                Console.ResetColor();
-                return;
-            }
+                throw new InvalidClassnameException(className);
 
             string representation = args[2];
+
             if (representation != "base" && representation != "secondary")
-            {
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"Invalid representation: {representation}");
-                Console.ResetColor();
-                return;
-            }
+                throw new InvalidValueException("representation", representation);
 
             IObject obj = ZOO.constructors[className]();
-            List<string> fieldNames = new List<string>();  
-            foreach(var o in obj.setFields)
+
+            Dictionary<string, string> props = new();
+
+            foreach (var o in obj.getFields)
             {
-                if (obj.getFields[o.Key]() is string || obj.getFields[o.Key]() is int)    
-                    fieldNames.Add(o.Key);
+
+                if (o.Value() is string || o.Value() is int)
+                {
+                    props.Add(o.Key, o.Value().ToString());
+                }
+
             }
-            
             Console.Write($"You have entered object creation mode\nPlease enter fields in format ");
             Console.ForegroundColor = ConsoleColor.DarkYellow;
             Console.Write("<field_name>=<value>\n");
@@ -210,7 +158,7 @@ namespace LAB
             Console.ForegroundColor = ConsoleColor.DarkYellow;
             Console.WriteLine("EXIT\n");
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine($"Available fields: {string.Join(", ", fieldNames)}");
+            Console.WriteLine($"Available fields: {string.Join(", ", props.Keys)}");
             Console.ResetColor();
             while (true)
             {
@@ -220,58 +168,39 @@ namespace LAB
                 string input = Console.ReadLine();
                 if (input == "DONE")
                 {
-                    if(representation == "base")
-                    {
-                        ZOO.objList[className].Add(obj);
-                        UndoStack.Push((className, obj));
-                    }
-                    else
-                    {
-                        List<object> values = new List<object>();
-                        foreach (var prop in obj.getFields)
-                            values.Add(obj.getFields[prop.Key]());
-                        IObject objAdapter = ZOO.adapterConstructors[className](values.ToArray());
-                        ZOO.objList[className].Add(objAdapter);
-                        UndoStack.Push((className, objAdapter));
-
-                    }
-                    Console.ForegroundColor = ConsoleColor.Yellow;
-                    Console.Write($"\nObject created: "); 
-                    Console.ResetColor();
-                    Console.WriteLine($"{className} {obj.ToString()}");
-
-                    if(RedoStack.Count > 0)
-                    {
-                        RedoStack.Clear();
-                    }
-                    
                     break;
                 }
                 else if (input == "EXIT")
                 {
-                    Console.WriteLine($"\nCreation of {className} abandoned");
-                    break;
+                    throw new EditionAbandonedException(className);
                 }
 
                 var entry = input.Split("=");
-                if(entry.Length < 2 )
+                try
                 {
-                    Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine($"Invalid entry {input}");
-                    Console.ResetColor();
-                    continue;
+                    if (entry.Length < 2)
+                    {
+                        throw new InvalidValueException("entry", input);
+                    }
+                    if (obj.setFields.ContainsKey(entry[0]) == false)
+                    {
+                        throw new InvalidValueException("fieldname", input);
+                    }
                 }
-                if (obj.setFields.ContainsKey(entry[0]) == false)
+                catch (Exception ex)
                 {
                     Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine($"Invalid fieldname {entry[0]}");
+                    Console.WriteLine(ex.ToString());
                     Console.ResetColor();
                     continue;
                 }
 
                 try
                 {
-                    obj.setFields[entry[0]](entry[1]);
+                    if (obj.getFields[entry[0]]() is int)
+                        int.Parse(entry[1]);
+                    else
+                        props[entry[0]] = entry[1];
                 }
                 catch
                 {
@@ -280,8 +209,37 @@ namespace LAB
                     Console.ResetColor();
                     continue;
                 }
-                
+
             }
+
+            if (RedoStack.Count > 0)
+                RedoStack.Clear();
+
+            foreach (var p in props)
+            {
+                obj.setFields[p.Key](p.Value);
+            }
+
+            if (representation == "base")
+            {
+                ZOO.objList[className].Add(obj);
+                UndoStack.Push((className, obj));
+            }
+            else
+            {
+                List<object> values = new List<object>();
+                foreach (var p in obj.getFields)
+                    values.Add(obj.getFields[p.Key]());
+
+                IObject objAdapter = ZOO.adapterConstructors[className](values.ToArray());
+                ZOO.objList[className].Add(objAdapter);
+                UndoStack.Push((className, objAdapter));
+            }
+
+            Console.ForegroundColor = ConsoleColor.Yellow;
+            Console.Write($"\nObject created: ");
+            Console.ResetColor();
+            Console.WriteLine($"{className} {obj.ToString()}");
 
 
         }
@@ -294,8 +252,8 @@ namespace LAB
         public string Description => "edit objects of a particular type matching certain conditions";
         public string Usage => "Usage: edit <class_name> [<requirement> ...]";
 
-        public static Stack<(string, IObject, IObject)> UndoStack = new();
-        public static Stack<(string, IObject, IObject)> RedoStack = new();
+        Stack<(string, IObject, IObject)> UndoStack = new();
+        Stack<(string, IObject, IObject)> RedoStack = new();
 
         public void Undo()
         {
@@ -321,69 +279,49 @@ namespace LAB
         {
             if (args.Length < 2)
             {
-                Console.ForegroundColor = ConsoleColor.DarkYellow;
-                Console.WriteLine(Usage);
-                Console.ResetColor();
-                return;
+                throw new InvalidArgumentsException(Usage);
             }
 
             string className = args[1].ToLower();
 
             if (ZOO.objList.ContainsKey(className) == false)
             {
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"Invalid class name: {className}");
-                Console.ResetColor();
-                return;
+                throw new InvalidClassnameException(className);
             }
+
+            var requirements = args.Skip(2).ToArray();
 
             var list = ZOO.objList[className];
 
             if (list.Count == 0)
             {
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"No objects of type {className} found");
-                Console.ResetColor();
-                return;
+                throw new NoObjectsFoundException(className);
             }
 
-            var requirements = args.Skip(2).ToArray();
             List<IObject> matches = new();
 
             foreach (var item in list)
             {
-                var obj = (IObject)item;
-                if (CommandFuncs.CheckRequirements(obj, requirements))
-                    matches.Add(obj);
+                var _obj = (IObject)item;
+                if (CommandFuncs.CheckRequirements(_obj, requirements))
+                    matches.Add(_obj);
             }
-            if(matches.Count != 1)
+            if (matches.Count != 1)
             {
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"Found {matches.Count} objects of type {className}:");
-                foreach(var item in matches)
-                {
-                    Console.WriteLine($"{item}");
-                }
-                Console.WriteLine("Requirements should specify an unique record.");
-                Console.ResetColor();
-                return;
+
+                throw new NotUniqueMatchException(className, matches.Select(x => x.name).ToList());
             }
 
-            IObject originalObj = matches[0];
-            IObject editingObj = ZOO.constructors[className]();
+            IObject obj = matches[0];
+            int index = ZOO.objList[className].IndexOf(obj);
 
-            List<string> fieldNames = new List<string>();
-            foreach (var o in editingObj.setFields)
+            Dictionary<string, string> props = new();
+            foreach (var o in obj.getFields)
             {
-                
-                if (editingObj.getFields[o.Key]() is string || editingObj.getFields[o.Key]() is int)
+                if (o.Value() is string || o.Value() is int)
                 {
-                    fieldNames.Add(o.Key);
-                    if(editingObj.getFields[o.Key]() is int)
-                        editingObj.setFields[o.Key](originalObj.getFields[o.Key]().ToString());
-                    else editingObj.setFields[o.Key](originalObj.getFields[o.Key]());
+                    props.Add(o.Key, o.Value().ToString());
                 }
-                    
             }
 
             Console.Write($"You have entered object edition mode\nPlease enter fields in format ");
@@ -398,7 +336,7 @@ namespace LAB
             Console.ForegroundColor = ConsoleColor.DarkYellow;
             Console.WriteLine("EXIT\n");
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine($"Available fields: {string.Join(", ", fieldNames)}");
+            Console.WriteLine($"Available fields: {string.Join(", ", props.Select(x => x.Key))}");
             Console.ResetColor();
 
             while (true)
@@ -410,56 +348,62 @@ namespace LAB
                 if (input == "DONE")
                 {
 
-                    ZOO.objList[className][ZOO.objList[className].IndexOf(originalObj)] = editingObj;
-
-                    UndoStack.Push((className, originalObj, editingObj));
-                    if(RedoStack.Count > 0)
-                    {
-                        RedoStack.Clear();
-                    }
-
-                    Console.ForegroundColor = ConsoleColor.Yellow;
-                    Console.Write($"\nObject edited: ");
-                    Console.ResetColor();
-                    Console.WriteLine($"{className} {editingObj.ToString()}");
                     break;
                 }
                 else if (input == "EXIT")
                 {
-                    Console.WriteLine($"\nEdition of {className} abandoned");
-                    break;
+                    throw new EditionAbandonedException(className);
                 }
 
                 var entry = input.Split("=");
-                if (entry.Length < 2)
+                try
                 {
-                    Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine($"Invalid entry {input}");
-                    Console.ResetColor();
-                    continue;
+                    if (entry.Length < 2)
+                    {
+                        throw new InvalidValueException("entry", input);
+                    }
+                    if (props.ContainsKey(entry[0]) == false)
+                    {
+                        throw new InvalidValueException("fieldname", input);
+                    }
                 }
-                if (editingObj.setFields.ContainsKey(entry[0]) == false)
+                catch (Exception ex)
                 {
                     Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine($"Invalid fieldname {entry[0]}");
+                    Console.WriteLine(ex.ToString());
                     Console.ResetColor();
                     continue;
                 }
 
                 try
                 {
-                    editingObj.setFields[entry[0]](entry[1]);
+                    if (obj.getFields[entry[0]]() is int)
+                        int.Parse(entry[1]);
+                    else
+                        props[entry[0]] = entry[1];
                 }
                 catch
                 {
+
                     Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine($"Invalid type: {entry[1]} should be {editingObj.getFields[entry[0]]().GetType()}");
+                    Console.WriteLine($"Invalid type: {entry[1]} should be {obj.getFields[entry[0]]().GetType()}");
                     Console.ResetColor();
                     continue;
                 }
 
             }
 
+            IObject editingObj = ZOO.constructors[className]();
+            foreach (var p in props)
+            {
+                editingObj.setFields[p.Key](p.Value);
+            }
+            ZOO.objList[className][ZOO.objList[className].IndexOf(obj)] = editingObj;
+            if (RedoStack.Count > 0)
+            {
+                RedoStack.Clear();
+            }
+            UndoStack.Push((className, obj, editingObj));
         }
 
         public class DeleteCommand : ICommand, IUndoable
@@ -468,8 +412,8 @@ namespace LAB
             public string Description => "delete objects of a particular type matching certain conditions";
             public string Usage => "Usage: delete <class_name> [<requirement> ...]";
 
-            public static Stack<(string, IObject)> UndoStack = new();
-            public static Stack<(string, IObject)> RedoStack = new();
+            Stack<(string, IObject)> UndoStack = new();
+            Stack<(string, IObject)> RedoStack = new();
 
             public void Undo()
             {
@@ -539,6 +483,86 @@ namespace LAB
             }
         }
     }
+
+    public class UndoCommand : ICommand
+    {
+        public string Name => "undo";
+        public string Description => "undo last used command";
+        public string Usage => "Usage: undo";
+
+        Stack<ICommand> UndoStack;
+        Stack<ICommand> RedoStack;
+        public UndoCommand(Stack<ICommand> undoStack, Stack<ICommand> redoStack)
+        {
+            UndoStack = undoStack;
+            RedoStack = redoStack;
+        }
+
+        public void Execute(string[] args)
+        {
+            if (args.Length != 1)
+                throw new InvalidArgumentsException(Usage);
+
+            if (UndoStack.Count == 0)
+                return;
+
+            ICommand command;
+            do
+            {
+                command = UndoStack.Pop();
+            } 
+            while (command is not IUndoable && UndoStack.Count > 0);
+
+            if(command is IUndoable)
+            {
+                IUndoable undoable = (IUndoable)command;
+                undoable.Undo();
+                Console.WriteLine($"undo: {command.Name}");
+            }
+            
+        }
+    }
+
+    public class RedoCommand : ICommand
+    {
+        public string Name => "redo";
+        public string Description => "redo last used command";
+        public string Usage => "Usage: redo";
+
+        Stack<ICommand> UndoStack;
+        Stack<ICommand> RedoStack;
+        public RedoCommand(Stack<ICommand> undoStack, Stack<ICommand> redoStack)
+        {
+            UndoStack = undoStack;
+            RedoStack = redoStack;
+        }
+
+        public void Execute(string[] args)
+        {
+            if (args.Length != 1)
+                throw new InvalidArgumentsException(Usage);
+
+            if (RedoStack.Count == 0)
+                return;
+
+            ICommand command;
+            do
+            {
+                command = RedoStack.Pop();
+            }
+            while (command is not IUndoable && RedoStack.Count > 0);
+
+            if (command is IUndoable)
+            {
+                IUndoable undoable = (IUndoable)command;
+                undoable.Redo();
+                Console.WriteLine($"redo: {command.Name}");
+            }
+
+
+        }
+    }
+
 
     public static class CommandFuncs
     {

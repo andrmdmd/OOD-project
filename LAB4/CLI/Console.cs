@@ -10,6 +10,8 @@ namespace LAB4
     public class MConsole
     {
         public static Dictionary<string, ICommand> commands = new();
+        Stack<ICommand> UndoStack = new();
+        Stack<ICommand> RedoStack = new();
 
         public MConsole()
         {
@@ -18,6 +20,8 @@ namespace LAB4
             commands.Add("find", new FindCommand());
             commands.Add("add", new AddCommand());
             commands.Add("edit", new EditCommand());
+            commands.Add("undo", new UndoCommand(UndoStack, RedoStack));
+            commands.Add("redo", new RedoCommand(UndoStack, RedoStack));
             RunConsole();
         }
         public void RunConsole()
@@ -62,6 +66,11 @@ namespace LAB4
                 try
                 {
                     command.Execute(args);
+                    UndoStack.Push(command);
+                    if(RedoStack.Count > 0)
+                    {
+                        RedoStack.Clear();
+                    }
 
                 }
                 catch (InvalidArgumentsException ex)
